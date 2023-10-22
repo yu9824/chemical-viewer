@@ -1,0 +1,142 @@
+name: Binary build
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  PYTHON_VERSION: 3.11
+
+jobs:
+  windows-build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout commit
+        uses: actions/checkout@v3
+
+      - name: Set up Python $PYTHON_VERSION
+        uses: actions/setup-python@v4
+        with: { python-version: $PYTHON_VERSION }
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip PyInstaller
+
+      - name: build
+        run: pyinstaller -F matplotlib-interactive.py
+
+      - name: upload
+        uses: actions/upload-artifact@v1
+        with:
+          name: matplotlib-interactive-windows
+          path: dist/matplotlib-interactive.exe
+
+  macOS-build:
+    runs-on: macOS-latest
+    steps:
+      - name: Checkout commit
+        uses: actions/checkout@v3
+
+      - name: Set up Python $PYTHON_VERSION
+        uses: actions/setup-python@v4
+        with: { python-version: $PYTHON_VERSION }
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip PyInstaller
+
+      - name: build
+        run: pyinstaller -F matplotlib-interactive.py
+
+      - name: upload
+        uses: actions/upload-artifact@v1
+        with:
+          name: matplotlib-interactive-macos
+          path: dist/matplotlib-interactive
+
+  ubuntu-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout commit
+        uses: actions/checkout@v3
+
+      - name: Set up Python $PYTHON_VERSION
+        uses: actions/setup-python@v4
+        with: { python-version: $PYTHON_VERSION }
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip PyInstaller
+
+      - name: build
+        run: pyinstaller -F matplotlib-interactive.py
+
+      - name: upload
+        uses: actions/upload-artifact@v1
+        with:
+          name: matplotlib-interactive-linux
+          path: dist/matplotlib-interactive
+
+  release:
+    needs: [ubuntu-build, macOS-build, windows-build]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download Linux
+        uses: actions/download-artifact@v1
+        with:
+          name: matplotlib-interactive-linux
+
+      - name: Download Mac
+        uses: actions/download-artifact@v1
+        with:
+          name: matplotlib-interactive-macos
+
+      - name: Download Windows
+        uses: actions/download-artifact@v1
+        with:
+          name: matplotlib-interactive-windows
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
+
+      - name: Zip
+        run: |
+          tar -C matplotlib-interactive-macos -pczvf matplotlib-interactive-macos.tar.gz matplotlib-interactive
+          tar -C matplotlib-interactive-linux -pczvf matplotlib-interactive-linux.tar.gz matplotlib-interactive
+          zip --junk-paths matplotlib-interactive-windows ./matplotlib-interactive-windows/matplotlib-interactive.exe
+      - name: Append Binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./matplotlib-interactive-macos.tar.gz
+          asset_name: matplotlib-interactive-macos.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Append Binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./matplotlib-interactive-linux.tar.gz
+          asset_name: matplotlib-interactive-linux.tar.gz
+          asset_content_type: application/gzip
+
+      - name: Append Binary
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./matplotlib-interactive-windows.zip
+          asset_name: matplotlib-interactive-windows.zip
+          asset_content_type: application/zip

@@ -1,4 +1,5 @@
 data/*.sdf
+data/data.csv
 
 # custom
 docs/

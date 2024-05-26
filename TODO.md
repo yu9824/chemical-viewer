@@ -1,0 +1,2 @@
+- ファイルパスをGUIで選べるようにする。("TkEasyGUI")
+- dependency

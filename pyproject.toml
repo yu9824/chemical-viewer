@@ -42,11 +42,11 @@ Source = "https://github.com/yu9824/chemical-viewer"
 Tracker = "https://github.com/yu9824/chemical-viewer/issues"
 Changelog = "https://github.com/yu9824/chemical-viewer/blob/main/CHANGELOG.md"
 
-[project.scripts]
-chemical-viewer = "chemical_viewer.__main__:entrypoint"
+# [project.scripts]
+# chemical-viewer = "chemical_viewer.__main__:entrypoint"
 
-# [project.gui-scripts]
-# chemical-viewer-gui = "chemical_viewer:main_gui"
+[project.gui-scripts]
+chemical-viewer = "chemical_viewer.__main__:entrypoint"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

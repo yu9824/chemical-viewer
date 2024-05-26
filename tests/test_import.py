@@ -2,4 +2,4 @@
 
 
 def test_import():
-    import python_template.utils
+    import chemical_viewer.utils

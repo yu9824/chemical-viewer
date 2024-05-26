@@ -19,3 +19,15 @@ Before [pep518](https://peps.python.org/pep-0518/)
 
 After [pep518](https://peps.python.org/pep-0518/)
 - `pyproject.toml`
+
+
+## How to use
+
+After `pip install`
+
+```bash
+chemical-viewer --file ./data/data.csv
+
+```
+
+Please check help (`chemical-viewer --help`)

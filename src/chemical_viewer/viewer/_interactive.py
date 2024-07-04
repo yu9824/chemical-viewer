@@ -139,6 +139,7 @@ class InteractiveChemicalViewer:
         self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
 
         self.fig.canvas.mpl_connect("key_press_event", self.resize_annotation)
+        self.fig.canvas.mpl_connect("key_press_event", self.delete)
 
         self.fig.tight_layout()
         self.fig.canvas.draw_idle()
@@ -254,12 +255,6 @@ class InteractiveChemicalViewer:
                         self.zorder_max += 1
                         _annotation.set(zorder=self.zorder_max)
 
-                    # ダブルクリックしたら削除
-                    if event.dblclick:
-                        self.lst_annotations_visible.remove(_annotation)
-                        _annotation.remove()
-                        self.annotation_active = None
-                        self.annotation_dragging = None
                     # 次のannotationは見ずに終了
                     break
             # annotationにマウスが乗っていないならば
@@ -355,8 +350,7 @@ class InteractiveChemicalViewer:
                 offset_image: OffsetImageWithAnnotation = (
                     self.annotation_active.offsetbox
                 )
-                # 上キー/下キーでoffsetboxを拡大縮小できる
-                print(event.key)
+                # *キー/-キーでoffsetboxを拡大縮小できる
                 if event.key == "+":
                     offset_image.set_zoom(offset_image.get_zoom() * 1.1)
                 elif event.key == "-":
@@ -374,6 +368,18 @@ class InteractiveChemicalViewer:
                         offset_image.set_zoom(offset_image.get_zoom() / 1.1)
                     # 再描画
                     self.fig.canvas.draw_idle()
+
+    def delete(self, event: matplotlib.backend_bases.KeyEvent)->None:
+        if event.inaxes == self.ax:
+            if (
+                type(self.annotation_active)
+                is matplotlib.offsetbox.AnnotationBbox
+            ):
+                if event.key in {"backspace", "delete"}:
+                    self.lst_annotations_visible.remove(self.annotation_active)
+                    self.annotation_active.remove()
+                    self.annotation_active = None
+                    self.annotation_dragging = None
 
     # def on_click_point(self, event: matplotlib.backend_bases.MouseEvent) -> None:
     #     if event.inaxes != self.ax:

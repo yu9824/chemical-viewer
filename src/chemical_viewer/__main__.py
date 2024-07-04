@@ -29,8 +29,7 @@ def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
         version=f"%(prog)s: {__version__}",
     )
     parser.add_argument(
-        "-f",
-        "--file",
+        "file",
         help="file path. columns must have ('x', 'y', 'z', 'texts', 'smiles').",
     )
     args = parser.parse_args(cli_args)

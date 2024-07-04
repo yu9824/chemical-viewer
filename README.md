@@ -26,7 +26,7 @@ After [pep518](https://peps.python.org/pep-0518/)
 After `pip install`
 
 ```bash
-chemical-viewer --file ./data/data.csv
+chemical-viewer ./data/data.csv
 
 ```
 

@@ -356,9 +356,10 @@ class InteractiveChemicalViewer:
                     self.annotation_active.offsetbox
                 )
                 # 上キー/下キーでoffsetboxを拡大縮小できる
-                if event.key == "up":
+                print(event.key)
+                if event.key == "+":
                     offset_image.set_zoom(offset_image.get_zoom() * 1.1)
-                elif event.key == "down":
+                elif event.key == "-":
                     offset_image.set_zoom(offset_image.get_zoom() / 1.1)
                 # 再描画
                 self.fig.canvas.draw_idle()
@@ -367,9 +368,9 @@ class InteractiveChemicalViewer:
                     offset_image: matplotlib.offsetbox.OffsetImage = (
                         _annotation.offsetbox
                     )
-                    if event.key == "up":
+                    if event.key == "+":
                         offset_image.set_zoom(offset_image.get_zoom() * 1.1)
-                    elif event.key == "down":
+                    elif event.key == "-":
                         offset_image.set_zoom(offset_image.get_zoom() / 1.1)
                     # 再描画
                     self.fig.canvas.draw_idle()

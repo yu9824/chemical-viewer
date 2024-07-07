@@ -1,5 +1,7 @@
+import sys
+from copy import copy
 from operator import add, attrgetter
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Optional
 
 import matplotlib.artist
 import matplotlib.axes
@@ -13,6 +15,11 @@ import numpy as np
 from numpy.typing import ArrayLike
 from rdkit import Chem
 from rdkit.Chem import Draw
+
+if sys.version_info >= (3, 9):
+    from collections.abc import Sequence
+else:
+    from typing import Sequence
 
 
 class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
@@ -67,14 +74,30 @@ class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
         self.get_children()[0].set_zoom(zoom)
 
 
+def get_xybox(
+    xy: tuple[float, float], ax: matplotlib.axes.Axes, alpha=0.25
+) -> tuple[float, float]:
+    assert len(xy) == 2
+
+    _tup_lim = (ax.get_xlim(), ax.get_ylim())
+    _tup_len = tuple(map(lambda _lim: _lim[1] - _lim[0], _tup_lim))
+    _xy_center = tuple(map(lambda _lim: add(*_lim) / 2, _tup_lim))
+
+    signs: list[Literal[1, -1]] = list()
+    for _t, _t_center in zip(xy, _xy_center):
+        signs.append(1 if _t < _t_center else -1)
+
+    return tuple(
+        xy[_idx] + _tup_len[_idx] * alpha * signs[_idx] for _idx in range(2)
+    )
+
+
 class InteractiveChemicalViewer:
     def __init__(
         self,
         ax: Optional[matplotlib.axes.Axes] = None,
-        width: Union[int, float] = 25,
         scale: float = 0.3,
     ) -> None:
-        self.width = width
         self.scale = scale
 
         # CONSTANTS
@@ -117,10 +140,12 @@ class InteractiveChemicalViewer:
             text=None,
         )
         self.imagebox_hover.axes = self.ax
+
+        xy = (add(*self.ax.get_xlim()) / 2, add(*self.ax.get_ylim()) / 2)
         self.annotation_hover = matplotlib.offsetbox.AnnotationBbox(
             self.imagebox_hover,
-            xy=(add(*self.ax.get_xlim()) / 2, add(*self.ax.get_ylim()) / 2),
-            xybox=(self.width, self.width),
+            xy=xy,
+            xybox=xy,
             xycoords="data",
             boxcoords="data",
             pad=0.5,
@@ -149,8 +174,8 @@ class InteractiveChemicalViewer:
         self,
         x: ArrayLike,
         y: ArrayLike,
-        mols: list[Chem.rdchem.Mol],
-        texts: Optional[list[str]] = None,
+        mols: Sequence[Chem.rdchem.Mol],
+        texts: Optional[Sequence[str]] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
         self.mols = mols
@@ -196,6 +221,9 @@ class InteractiveChemicalViewer:
                 self.annotation_hover.xy = self.scatter_object.get_offsets()[
                     _index_scatter
                 ]
+                self.annotation_hover.xybox = get_xybox(
+                    self.annotation_hover.xy, ax=self.ax, alpha=0.25
+                )
 
                 # 画像を更新
                 self.imagebox_hover.set_data(
@@ -222,7 +250,13 @@ class InteractiveChemicalViewer:
                     self.fig.canvas.draw_idle()
 
     def on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
-        """クリック時の挙動"""
+        """クリック時の挙動。
+
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.MouseEvent
+            event
+        """
         # マウスが乗っているのが当該axならば
         if event.inaxes == self.ax:
             # すべてのvisibleなannotationについて
@@ -274,12 +308,6 @@ class InteractiveChemicalViewer:
                 if contains and self.annotation_active is None:
                     index: int = details["ind"][0]
 
-                    # HACK: annotationつきのoffsetboxを作成する
-                    # _imageboxを作成して
-                    # _imagebox = matplotlib.offsetbox.OffsetImage(
-                    #     Draw.MolToImage(mols[index]), zoom=self.scale
-                    # )
-                    # _imagebox.image.axes = self.ax
                     _imagebox = OffsetImageWithAnnotation(
                         Draw.MolToImage(self.mols[index]),
                         zoom=self.scale,
@@ -291,10 +319,11 @@ class InteractiveChemicalViewer:
 
                     # annotationを作成
                     self.zorder_max += 1
+                    xy = self.scatter_object.get_offsets()[index]
                     _annotation = matplotlib.offsetbox.AnnotationBbox(
                         _imagebox,
-                        xy=self.scatter_object.get_offsets()[index],
-                        xybox=(self.width, self.width),
+                        xy=xy,
+                        xybox=get_xybox(xy, ax=self.ax, alpha=0.25),
                         xycoords="data",
                         boxcoords="data",
                         # boxcoords="offset points",
@@ -320,6 +349,13 @@ class InteractiveChemicalViewer:
             self.fig.canvas.draw_idle()
 
     def on_motion(self, event: matplotlib.backend_bases.MouseEvent) -> None:
+        """マウスの動きに従ってAnnotationBboxを移動させる。
+
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.MouseEvent
+            event
+        """
         if (
             type(self.annotation_dragging)
             is matplotlib.offsetbox.AnnotationBbox
@@ -337,10 +373,19 @@ class InteractiveChemicalViewer:
     def resize_annotation(
         self, event: matplotlib.backend_bases.KeyEvent
     ) -> None:
-        """上矢印で拡大・下矢印で縮小
+        """+で拡大。-で縮小。
 
         もし'active'なannotationがあれば、それだけを拡大する。
         もし'active'なものがないならば全部を拡大する。
+
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.KeyEvent
+            event
+
+        Raises
+        ------
+        ValueError
         """
         if event.inaxes == self.ax:
             if (
@@ -366,10 +411,27 @@ class InteractiveChemicalViewer:
                         offset_image.set_zoom(offset_image.get_zoom() * 1.1)
                     elif event.key == "-":
                         offset_image.set_zoom(offset_image.get_zoom() / 1.1)
-                    # 再描画
-                    self.fig.canvas.draw_idle()
+            else:
+                raise ValueError
+            # 再描画
+            self.fig.canvas.draw_idle()
 
-    def delete(self, event: matplotlib.backend_bases.KeyEvent)->None:
+    def delete(self, event: matplotlib.backend_bases.KeyEvent) -> None:
+        """backspace/deleteで削除。
+
+        もし'active'なannotationがあれば、それだけを削除する。
+        もし'active'なものがないならば全部を削除する。
+
+        Parameters
+        ----------
+        event : matplotlib.backend_bases.KeyEvent
+            event
+
+        Raises
+        ------
+        ValueError
+
+        """
         if event.inaxes == self.ax:
             if (
                 type(self.annotation_active)
@@ -380,6 +442,16 @@ class InteractiveChemicalViewer:
                     self.annotation_active.remove()
                     self.annotation_active = None
                     self.annotation_dragging = None
+            elif self.annotation_active is None:
+                for _annotation in copy(self.lst_annotations_visible):
+                    if event.key in {"backspace", "delete"}:
+                        self.lst_annotations_visible.remove(_annotation)
+                        _annotation.remove()
+                        _annotation = None
+            else:
+                raise ValueError
+            # 再描画
+            self.fig.canvas.draw_idle()
 
     # def on_click_point(self, event: matplotlib.backend_bases.MouseEvent) -> None:
     #     if event.inaxes != self.ax:

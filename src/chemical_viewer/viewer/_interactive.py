@@ -244,6 +244,10 @@ class InteractiveChemicalViewer:
                     self._annotation_hover.xybox = get_xybox(
                         self._annotation_hover.xy, ax=self.ax, alpha=0.25
                     )
+                    # 色をプロットしている色と同じにする
+                    self._annotation_hover.patch.set_edgecolor(
+                        _scatter_object.get_edgecolor()
+                    )
 
                     # 画像を更新
                     self._imagebox_hover.set_data(
@@ -265,9 +269,6 @@ class InteractiveChemicalViewer:
                     if self._annotation_hover.zorder < self.zorder_max:
                         self.zorder_max += 1
                         self._annotation_hover.set(zorder=self.zorder_max)
-                        self._annotation_hover.patch.set_edgecolor(
-                            _scatter_object.get_edgecolor()
-                        )
                     # 再描画
                     self.fig.canvas.draw_idle()
                 # マウスが乗っていない場合
@@ -379,6 +380,11 @@ class InteractiveChemicalViewer:
                             zorder=self.zorder_max,
                         )
                         _annotation.set_visible(True)
+                        # 色をプロットしている色と同じにする
+                        _annotation.patch.set_edgecolor(
+                            _scatter_object.get_edgecolor()
+                        )
+
                         self.ax.add_artist(_annotation)
 
                         # アクティブ化

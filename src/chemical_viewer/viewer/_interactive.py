@@ -75,7 +75,7 @@ class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
 
 
 def get_xybox(
-    xy: tuple[float, float], ax: matplotlib.axes.Axes, alpha=0.25
+    xy: tuple[float, float], ax: matplotlib.axes.Axes, alpha: float = 0.25
 ) -> tuple[float, float]:
     assert len(xy) == 2
 
@@ -92,7 +92,6 @@ def get_xybox(
     )
 
 
-# HACK: listだとオブジェクトを変えられちゃうのでimmutable (appendするときだけlist化) したい。
 class InteractiveChemicalViewer:
     def __init__(
         self,
@@ -254,7 +253,6 @@ class InteractiveChemicalViewer:
                             ][_index_scatter]
                         )
                     )
-                    # HACK: テキストを指定できるようにする
                     self._imagebox_hover.set_text(
                         self.texts[
                             self.scatter_objects.index(_scatter_object)
@@ -357,7 +355,7 @@ class InteractiveChemicalViewer:
                             zoom=self.scale,
                             text=self.texts[
                                 self.scatter_objects.index(_scatter_object)
-                            ][index],  # HACK: テキストを指定できるようにする
+                            ][index],
                         )
                         _imagebox.axes = self.ax
 

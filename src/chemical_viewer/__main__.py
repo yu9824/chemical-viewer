@@ -8,10 +8,13 @@ if sys.version_info >= (3, 9):
 else:
     from typing import Sequence
 
-from . import __version__
-from .gui import main_tk
+from chemical_viewer import __version__
+from chemical_viewer.gui import main_tk
+from chemical_viewer.logging import DEBUG, get_root_logger
 
 __all__ = ("main",)
+
+root_logger = get_root_logger()
 
 
 def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
@@ -24,6 +27,9 @@ def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
         version=f"%(prog)s: {__version__}",
     )
     parser.add_argument(
+        "-d", "--debug", action="store_true", help="run in debug mode"
+    )
+    parser.add_argument(
         "file",
         nargs="?",
         type=Path,
@@ -31,6 +37,9 @@ def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
         help="file path. columns must have 'x', 'y', 'smiles'. ('z', 'texts' are optional)",
     )
     args = parser.parse_args(cli_args)
+
+    if args.debug:
+        root_logger.setLevel(DEBUG)
 
     main_tk(args.file)
 

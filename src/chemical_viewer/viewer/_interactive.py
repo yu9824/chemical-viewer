@@ -265,6 +265,9 @@ class InteractiveChemicalViewer:
                     if self._annotation_hover.zorder < self.zorder_max:
                         self.zorder_max += 1
                         self._annotation_hover.set(zorder=self.zorder_max)
+                        self._annotation_hover.patch.set_edgecolor(
+                            _scatter_object.get_edgecolor()
+                        )
                     # 再描画
                     self.fig.canvas.draw_idle()
                 # マウスが乗っていない場合
@@ -478,23 +481,25 @@ class InteractiveChemicalViewer:
 
         """
         if event.inaxes == self.ax:
+            _list_annotations_visible = list(self._annotations_visible)
             if (
                 type(self._annotation_active)
                 is matplotlib.offsetbox.AnnotationBbox
             ):
                 if event.key in {"backspace", "delete"}:
-                    self._annotations_visible.remove(self._annotation_active)
+                    _list_annotations_visible.remove(self._annotation_active)
                     self._annotation_active.remove()
                     self._annotation_active = None
                     self._annotation_dragging = None
             elif self._annotation_active is None:
                 for _annotation in copy(self._annotations_visible):
                     if event.key in {"backspace", "delete"}:
-                        self._annotations_visible.remove(_annotation)
+                        _list_annotations_visible.remove(_annotation)
                         _annotation.remove()
                         _annotation = None
             else:
                 raise ValueError
+            self._annotations_visible = tuple(_list_annotations_visible)
             # 再描画
             self.fig.canvas.draw_idle()
 

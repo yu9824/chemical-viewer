@@ -42,11 +42,19 @@ class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
     ]:
         return tuple(super().get_children())
 
+    def get_data(
+        self,
+    ) -> "np.ndarray[Any, int]":
+        return self.get_children()[0].get_data()
+
     def set_data(
         self,
         arr: ArrayLike,
     ) -> None:
         self.get_children()[0].set_data(arr)
+
+    def get_text(self) -> str:
+        return self.get_children()[1].get_text()
 
     def set_text(
         self,
@@ -72,6 +80,12 @@ class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
             zoom / zoom_before * text_object.get_fontsize()
         )
         self.get_children()[0].set_zoom(zoom)
+
+    def is_same(self, offsetbox: "OffsetImageWithAnnotation") -> bool:
+        return (
+            np.allclose(offsetbox.get_data(), self.get_data())
+            and offsetbox.get_text() == self.get_text()
+        )
 
 
 def get_xybox(
@@ -232,41 +246,65 @@ class InteractiveChemicalViewer:
                     # annotationを更新する作業
                     # details["ind"]でマウスが乗っているscatterのindexが取得できる
                     # scatterのindexが1次元のnp.ndarrayで返ってくる。（複数が重なっていることもあるため）
-                    _index_marker: int = details["ind"][0]
-                    _index_scatter_object: int = self.scatter_objects.index(
-                        _scatter_object
-                    )
-
-                    # 当該点の座標を取得して、位置を更新
-                    self._annotation_hover.xy = _scatter_object.get_offsets()[
-                        _index_marker
-                    ]
-                    self._annotation_hover.xybox = get_xybox(
-                        self._annotation_hover.xy, ax=self.ax, alpha=0.25
-                    )
-                    # 色をプロットしている色と同じにする
-                    self._annotation_hover.patch.set_edgecolor(
-                        _scatter_object.get_edgecolor()
-                    )
-
-                    # 画像を更新
-                    self._imagebox_hover.set_data(
-                        Draw.MolToImage(
-                            self.mols[_index_scatter_object][_index_marker]
+                    # _index_marker: int = details["ind"][0]
+                    for _index_marker in details["ind"]:
+                        _index_scatter_object: int = (
+                            self.scatter_objects.index(_scatter_object)
                         )
-                    )
-                    self._imagebox_hover.set_text(
-                        self.texts[_index_scatter_object][_index_marker]
-                    )
 
-                    # 見えるようにして
-                    self._annotation_hover.set_visible(True)
-                    # 一番手前にして
-                    if self._annotation_hover.zorder < self.zorder_max:
-                        self.zorder_max += 1
-                        self._annotation_hover.set(zorder=self.zorder_max)
-                    # 再描画
-                    self.fig.canvas.draw_idle()
+                        # 当該点の座標を取得して、位置を更新
+                        self._annotation_hover.xy = (
+                            _scatter_object.get_offsets()[_index_marker]
+                        )
+                        self._annotation_hover.xybox = get_xybox(
+                            self._annotation_hover.xy, ax=self.ax, alpha=0.25
+                        )
+
+                        # 色をプロットしている色と同じにする
+                        if _scatter_object.get_edgecolor().shape[0] == 1:
+                            edgecolor = _scatter_object.get_edgecolor()
+                        else:
+                            # 連続値の場合は黒
+                            edgecolor = "black"
+                        self._annotation_hover.patch.set_edgecolor(edgecolor)
+
+                        # 画像を更新
+                        self._imagebox_hover.set_data(
+                            Draw.MolToImage(
+                                self.mols[_index_scatter_object][_index_marker]
+                            )
+                        )
+                        self._imagebox_hover.set_text(
+                            self.texts[_index_scatter_object][_index_marker]
+                        )
+
+                        # 完全に同じ座標、画像、テキストの場合、スキップ
+                        if any(
+                            self._imagebox_hover.is_same(_annotation.offsetbox)
+                            and tuple(_annotation.xy)
+                            == tuple(self._annotation_hover.xy)
+                            for _annotation in self._annotations_visible
+                        ):
+                            continue
+
+                        # 見えるようにして
+                        self._annotation_hover.set_visible(True)
+                        # 一番手前にして
+                        if self._annotation_hover.zorder < self.zorder_max:
+                            self.zorder_max += 1
+                            self._annotation_hover.set(zorder=self.zorder_max)
+
+                        # 再描画
+                        self.fig.canvas.draw_idle()
+
+                        # 描画できたので終了
+                        break
+                    else:
+                        # 描画できなかったので別のscatter_objectを探す
+                        continue
+
+                    # 描画できたので終了
+                    break
                 # マウスが乗っていない場合
                 else:
                     # 今annotationが見えているならば
@@ -344,57 +382,81 @@ class InteractiveChemicalViewer:
                     contains, details = _scatter_object.contains(event)
                     # マウスが乗っている場合
                     if contains and self._annotation_active is None:
-                        _index_marker: int = details["ind"][0]
-                        _index_scatter_object: int = (
-                            self.scatter_objects.index(_scatter_object)
-                        )
-                        # self._indexes_visible += (
-                        #     (_index_scatter_object, _index_marker),
-                        # )
+                        # _index_marker: int = details["ind"][0]
+                        for _index_marker in details["ind"]:
+                            _index_scatter_object: int = (
+                                self.scatter_objects.index(_scatter_object)
+                            )
+                            # self._indexes_visible += (
+                            #     (_index_scatter_object, _index_marker),
+                            # )
 
-                        _imagebox = OffsetImageWithAnnotation(
-                            Draw.MolToImage(
-                                self.mols[_index_scatter_object][_index_marker]
-                            ),
-                            zoom=self.scale,
-                            text=self.texts[_index_scatter_object][
-                                _index_marker
-                            ],
-                        )
-                        _imagebox.axes = self.ax
+                            _imagebox = OffsetImageWithAnnotation(
+                                Draw.MolToImage(
+                                    self.mols[_index_scatter_object][
+                                        _index_marker
+                                    ]
+                                ),
+                                zoom=self.scale,
+                                text=self.texts[_index_scatter_object][
+                                    _index_marker
+                                ],
+                            )
+                            _imagebox.axes = self.ax
 
-                        # annotationを作成
-                        self.zorder_max += 1
-                        xy = _scatter_object.get_offsets()[_index_marker]
-                        _annotation = matplotlib.offsetbox.AnnotationBbox(
-                            _imagebox,
-                            xy=xy,
-                            xybox=get_xybox(xy, ax=self.ax, alpha=0.25),
-                            xycoords="data",
-                            boxcoords="data",
-                            # boxcoords="offset points",
-                            pad=0.5,
-                            arrowprops=dict(
-                                arrowstyle="->", facecolor="black"
-                            ),
-                            zorder=self.zorder_max,
-                        )
-                        _annotation.set_visible(True)
-                        # 色をプロットしている色と同じにする
-                        _annotation.patch.set_edgecolor(
-                            _scatter_object.get_edgecolor()
-                        )
+                            xy = tuple(
+                                _scatter_object.get_offsets()[_index_marker]
+                            )
+                            # 完全に同じ座標、画像、テキストの場合、スキップ
+                            if any(
+                                _imagebox.is_same(_annotation.offsetbox)
+                                and xy == tuple(_annotation.xy)
+                                for _annotation in self._annotations_visible
+                            ):
+                                continue
 
-                        self.ax.add_artist(_annotation)
+                            # annotationを作成
+                            self.zorder_max += 1
+                            _annotation = matplotlib.offsetbox.AnnotationBbox(
+                                _imagebox,
+                                xy=xy,
+                                xybox=get_xybox(xy, ax=self.ax, alpha=0.25),
+                                xycoords="data",
+                                boxcoords="data",
+                                # boxcoords="offset points",
+                                pad=0.5,
+                                arrowprops=dict(
+                                    arrowstyle="->", facecolor="black"
+                                ),
+                                zorder=self.zorder_max,
+                            )
+                            _annotation.set_visible(True)
 
-                        # アクティブ化
-                        self._annotation_active = _annotation
-                        self._annotation_active.patch.set_linewidth(
-                            self.LINEWIDTH_ACTIVE
-                        )
-                        # 移動可能にするために保存
-                        self._annotation_dragging = _annotation
-                        self._annotations_visible += (_annotation,)
+                            # 色をプロットしている色と同じにする
+                            if _scatter_object.get_edgecolor().shape[0] == 1:
+                                edgecolor = _scatter_object.get_edgecolor()
+                            else:
+                                # 連続値の場合は黒
+                                edgecolor = "black"
+                            _annotation.patch.set_edgecolor(edgecolor)
+
+                            self.ax.add_artist(_annotation)
+
+                            # アクティブ化
+                            self._annotation_active = _annotation
+                            self._annotation_active.patch.set_linewidth(
+                                self.LINEWIDTH_ACTIVE
+                            )
+                            # 移動可能にするために保存
+                            self._annotation_dragging = _annotation
+                            self._annotations_visible += (_annotation,)
+
+                            # 描画できたので終了
+                            break
+                        else:
+                            # 描画できなかったので別のscatter_objectを探す
+                            continue
+                        # 描画できたので終了
                         break
                 # 点とannotationのいずれにもマウスが乗っていない場合
                 else:

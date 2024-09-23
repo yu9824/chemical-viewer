@@ -1,5 +1,6 @@
 import os
 import tkinter
+from pathlib import Path
 from typing import Optional, Union
 
 import matplotlib.axes
@@ -68,12 +69,14 @@ def main_tk(filepath_input: Optional[Union[os.PathLike, str]]) -> None:
         filepath_input = eg.popup_get_file(
             message="select data file",
             file_types=(("CSV", "*.csv"), ("Excel", "*.xlsx")),
+            multiple_files=False,
         )
+    filepath_input = Path(filepath_input)
 
-    if os.path.isfile(filepath_input):
-        if filepath_input.endswith(".csv"):
+    if filepath_input.is_file():
+        if filepath_input.suffix == ".csv":
             df = pd.read_csv(filepath_input)
-        elif filepath_input.endswith(".xlsx"):
+        elif filepath_input.suffix == ".xlsx":
             df = pd.read_excel(".xlsx")
         else:
             raise ValueError
@@ -83,13 +86,14 @@ def main_tk(filepath_input: Optional[Union[os.PathLike, str]]) -> None:
     start(df)
 
 
-def start(df: pd.DataFrame):
+def start(df: pd.DataFrame) -> None:
     layout = (
         (
             eg.Table(
                 values=df.head().values.tolist(),
                 headings=df.columns.tolist(),
                 key="table",
+                max_col_width=1,
                 expand_x=True,
             ),
         ),
@@ -126,6 +130,7 @@ def start(df: pd.DataFrame):
         title="Start Menu",
         layout=layout,
         resizable=True,
+        size=(600, 600),
     ) as window:
         for event, values in window.event_iter():
             if event in {eg.WINDOW_CLOSED, "Cancel"}:

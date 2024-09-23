@@ -133,14 +133,11 @@ class InteractiveChemicalViewer:
             matplotlib.collections.PathCollection,
             ...,
         ] = ()
+        # self._indexes_visible: tuple[tuple[int, int], ...] = ()
 
         self.zorder_max = 3
 
         # hover時に表示するannotation
-        # self._imagebox_hover = matplotlib.offsetbox.OffsetImage(
-        #     np.zeros((2, 2)), zoom=self.scale
-        # )  # 適当な画像
-        # self._imagebox_hover.image.axes = self.ax
         self._imagebox_hover = OffsetImageWithAnnotation(
             np.zeros((2, 2)),
             zoom=self.scale,
@@ -235,11 +232,14 @@ class InteractiveChemicalViewer:
                     # annotationを更新する作業
                     # details["ind"]でマウスが乗っているscatterのindexが取得できる
                     # scatterのindexが1次元のnp.ndarrayで返ってくる。（複数が重なっていることもあるため）
-                    _index_scatter: int = details["ind"][0]
+                    _index_marker: int = details["ind"][0]
+                    _index_scatter_object: int = self.scatter_objects.index(
+                        _scatter_object
+                    )
 
                     # 当該点の座標を取得して、位置を更新
                     self._annotation_hover.xy = _scatter_object.get_offsets()[
-                        _index_scatter
+                        _index_marker
                     ]
                     self._annotation_hover.xybox = get_xybox(
                         self._annotation_hover.xy, ax=self.ax, alpha=0.25
@@ -252,15 +252,11 @@ class InteractiveChemicalViewer:
                     # 画像を更新
                     self._imagebox_hover.set_data(
                         Draw.MolToImage(
-                            self.mols[
-                                self.scatter_objects.index(_scatter_object)
-                            ][_index_scatter]
+                            self.mols[_index_scatter_object][_index_marker]
                         )
                     )
                     self._imagebox_hover.set_text(
-                        self.texts[
-                            self.scatter_objects.index(_scatter_object)
-                        ][_index_scatter]
+                        self.texts[_index_scatter_object][_index_marker]
                     )
 
                     # 見えるようにして
@@ -348,24 +344,28 @@ class InteractiveChemicalViewer:
                     contains, details = _scatter_object.contains(event)
                     # マウスが乗っている場合
                     if contains and self._annotation_active is None:
-                        index: int = details["ind"][0]
+                        _index_marker: int = details["ind"][0]
+                        _index_scatter_object: int = (
+                            self.scatter_objects.index(_scatter_object)
+                        )
+                        # self._indexes_visible += (
+                        #     (_index_scatter_object, _index_marker),
+                        # )
 
                         _imagebox = OffsetImageWithAnnotation(
                             Draw.MolToImage(
-                                self.mols[
-                                    self.scatter_objects.index(_scatter_object)
-                                ][index]
+                                self.mols[_index_scatter_object][_index_marker]
                             ),
                             zoom=self.scale,
-                            text=self.texts[
-                                self.scatter_objects.index(_scatter_object)
-                            ][index],
+                            text=self.texts[_index_scatter_object][
+                                _index_marker
+                            ],
                         )
                         _imagebox.axes = self.ax
 
                         # annotationを作成
                         self.zorder_max += 1
-                        xy = _scatter_object.get_offsets()[index]
+                        xy = _scatter_object.get_offsets()[_index_marker]
                         _annotation = matplotlib.offsetbox.AnnotationBbox(
                             _imagebox,
                             xy=xy,

@@ -92,6 +92,7 @@ def get_xybox(
     )
 
 
+# HACK: listだとオブジェクトを変えられちゃうのでimmutable (appendするときだけlist化) したい。
 class InteractiveChemicalViewer:
     def __init__(
         self,
@@ -117,34 +118,40 @@ class InteractiveChemicalViewer:
             self.ax = ax
         self.fig = self.ax.figure
 
-        self.lst_annotations_visible: list[
-            matplotlib.offsetbox.AnnotationBbox
-        ] = []
-        self.annotation_active: Optional[
-            matplotlib.offsetbox.AnnotationBbox
-        ] = None
-        self.annotation_dragging: Optional[
+        self._annotations_visible: tuple[
+            matplotlib.offsetbox.AnnotationBbox, ...
+        ] = ()
+        self._annotation_active: Optional[
             matplotlib.offsetbox.AnnotationBbox
         ] = None
-        self.scatter_objects: list[matplotlib.collections.PathCollection] = []
+        self._annotation_dragging: Optional[
+            matplotlib.offsetbox.AnnotationBbox
+        ] = None
+
+        self.mols: tuple[tuple[Chem.rdchem.Mol, ...]] = ()
+        self.texts: tuple[tuple[str, ...]] = ()
+        self.scatter_objects: tuple[
+            matplotlib.collections.PathCollection,
+            ...,
+        ] = ()
 
         self.zorder_max = 3
 
         # hover時に表示するannotation
-        # self.imagebox_hover = matplotlib.offsetbox.OffsetImage(
+        # self._imagebox_hover = matplotlib.offsetbox.OffsetImage(
         #     np.zeros((2, 2)), zoom=self.scale
         # )  # 適当な画像
-        # self.imagebox_hover.image.axes = self.ax
-        self.imagebox_hover = OffsetImageWithAnnotation(
+        # self._imagebox_hover.image.axes = self.ax
+        self._imagebox_hover = OffsetImageWithAnnotation(
             np.zeros((2, 2)),
             zoom=self.scale,
             text=None,
         )
-        self.imagebox_hover.axes = self.ax
+        self._imagebox_hover.axes = self.ax
 
         xy = (add(*self.ax.get_xlim()) / 2, add(*self.ax.get_ylim()) / 2)
-        self.annotation_hover = matplotlib.offsetbox.AnnotationBbox(
-            self.imagebox_hover,
+        self._annotation_hover = matplotlib.offsetbox.AnnotationBbox(
+            self._imagebox_hover,
             xy=xy,
             xybox=xy,
             xycoords="data",
@@ -154,9 +161,9 @@ class InteractiveChemicalViewer:
             zorder=self.zorder_max,
         )
         # 隠しておく
-        self.annotation_hover.patch.set_linewidth(self.LINEWIDTH_INACTIVE)
-        self.annotation_hover.set_visible(False)
-        self.ax.add_artist(self.annotation_hover)
+        self._annotation_hover.patch.set_linewidth(self.LINEWIDTH_INACTIVE)
+        self._annotation_hover.set_visible(False)
+        self.ax.add_artist(self._annotation_hover)
 
         # 登録
         self.fig.canvas.mpl_connect("motion_notify_event", self._hover)
@@ -179,24 +186,27 @@ class InteractiveChemicalViewer:
         texts: Optional[Sequence[str]] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
-        self.mols = mols
+        self.mols += (tuple(mols),)
 
         if texts is None:
-            texts = ("",) * len(self.mols)
+            texts = ("",) * len(mols)
+        else:
+            texts = tuple(texts)
+        self.texts += (texts,)
 
         assert (
-            len(self.mols) == len(x) == len(y) == len(texts)
+            len(mols) == len(x) == len(y) == len(texts)
         ), "lengths of mols, x, and y must be the same"
-        self.texts = texts
+
         _scatter_object = self.ax.scatter(x, y, **kwargs)
-        self.scatter_objects.append(_scatter_object)
+        self.scatter_objects += (_scatter_object,)
         return _scatter_object
 
     def _hover(
         self,
         event: matplotlib.backend_bases.MouseEvent,
     ) -> None:
-        visibility = self.annotation_hover.get_visible()
+        visibility = self._annotation_hover.get_visible()
         # マウスが乗っているのが当該axならば
         # かつ、annotationのどれにもマウスが乗っていないならば
         if event.inaxes == self.ax:
@@ -214,10 +224,10 @@ class InteractiveChemicalViewer:
                 # マウスが乗っている場合
                 if (
                     contains
-                    and self.annotation_active is None
+                    and self._annotation_active is None
                     and not any(
                         _annotation.contains(event)[0]
-                        for _annotation in self.lst_annotations_visible
+                        for _annotation in self._annotations_visible
                     )
                 ):
                     details: dict[
@@ -229,36 +239,44 @@ class InteractiveChemicalViewer:
                     _index_scatter: int = details["ind"][0]
 
                     # 当該点の座標を取得して、位置を更新
-                    self.annotation_hover.xy = _scatter_object.get_offsets()[
+                    self._annotation_hover.xy = _scatter_object.get_offsets()[
                         _index_scatter
                     ]
-                    self.annotation_hover.xybox = get_xybox(
-                        self.annotation_hover.xy, ax=self.ax, alpha=0.25
+                    self._annotation_hover.xybox = get_xybox(
+                        self._annotation_hover.xy, ax=self.ax, alpha=0.25
                     )
 
                     # 画像を更新
-                    self.imagebox_hover.set_data(
-                        Draw.MolToImage(self.mols[_index_scatter])
+                    self._imagebox_hover.set_data(
+                        Draw.MolToImage(
+                            self.mols[
+                                self.scatter_objects.index(_scatter_object)
+                            ][_index_scatter]
+                        )
                     )
                     # HACK: テキストを指定できるようにする
-                    self.imagebox_hover.set_text(self.texts[_index_scatter])
+                    self._imagebox_hover.set_text(
+                        self.texts[
+                            self.scatter_objects.index(_scatter_object)
+                        ][_index_scatter]
+                    )
 
                     # 見えるようにして
-                    self.annotation_hover.set_visible(True)
+                    self._annotation_hover.set_visible(True)
                     # 一番手前にして
-                    if self.annotation_hover.zorder < self.zorder_max:
+                    if self._annotation_hover.zorder < self.zorder_max:
                         self.zorder_max += 1
-                        self.annotation_hover.set(zorder=self.zorder_max)
+                        self._annotation_hover.set(zorder=self.zorder_max)
                     # 再描画
                     self.fig.canvas.draw_idle()
-            # マウスが乗っていない場合
-            else:
-                # 今annotationが見えているならば
-                if visibility:
-                    # annotationを見えなくする
-                    self.annotation_hover.set_visible(False)
-                    # 再描画
-                    self.fig.canvas.draw_idle()
+                # マウスが乗っていない場合
+                else:
+                    # 今annotationが見えているならば
+                    if visibility:
+                        # annotationを見えなくする
+                        self._annotation_hover.set_visible(False)
+                        # 再描画
+                        self.fig.canvas.draw_idle()
 
     def _on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         """クリック時の挙動。
@@ -271,27 +289,29 @@ class InteractiveChemicalViewer:
         # マウスが乗っているのが当該axならば
         if event.inaxes == self.ax:
             # すべてのvisibleなannotationについて
-            # for _annotation in self.lst_annotations_visible:
+            # for _annotation in self._annotations_visible:
             # zorderの上からそのannotationを触っているのか判定する
             for _annotation in sorted(
-                self.lst_annotations_visible, key=attrgetter("zorder")
-            )[::-1]:
+                self._annotations_visible,
+                key=attrgetter("zorder"),
+                reverse=True,
+            ):
                 contains, _ = _annotation.contains(event)
                 # そのannotationにマウスが乗っているならば
                 if contains:
                     # 今アクティブなものを非アクティブにする
                     if (
-                        type(self.annotation_active)
+                        type(self._annotation_active)
                         is matplotlib.offsetbox.AnnotationBbox
                     ):
-                        self.annotation_active.patch.set_linewidth(
+                        self._annotation_active.patch.set_linewidth(
                             self.LINEWIDTH_INACTIVE
                         )
                     # アクティブにする
-                    self.annotation_active = _annotation
-                    self.annotation_dragging = _annotation
+                    self._annotation_active = _annotation
+                    self._annotation_dragging = _annotation
                     # アクティブであることを強調するため、枠線を太くする
-                    self.annotation_active.patch.set_linewidth(
+                    self._annotation_active.patch.set_linewidth(
                         self.LINEWIDTH_ACTIVE
                     )
 
@@ -306,10 +326,10 @@ class InteractiveChemicalViewer:
             else:
                 # アクティブなannotationがあるならばそれはとりあえずそれは非アクティブ化する
                 if (
-                    type(self.annotation_active)
+                    type(self._annotation_active)
                     is matplotlib.offsetbox.AnnotationBbox
                 ):
-                    self.annotation_active.patch.set_linewidth(
+                    self._annotation_active.patch.set_linewidth(
                         self.LINEWIDTH_INACTIVE
                     )
 
@@ -325,15 +345,19 @@ class InteractiveChemicalViewer:
                     # scatter_objectにマウスが乗っているかどうかを判定
                     contains, details = _scatter_object.contains(event)
                     # マウスが乗っている場合
-                    if contains and self.annotation_active is None:
+                    if contains and self._annotation_active is None:
                         index: int = details["ind"][0]
 
                         _imagebox = OffsetImageWithAnnotation(
-                            Draw.MolToImage(self.mols[index]),
+                            Draw.MolToImage(
+                                self.mols[
+                                    self.scatter_objects.index(_scatter_object)
+                                ][index]
+                            ),
                             zoom=self.scale,
                             text=self.texts[
-                                index
-                            ],  # HACK: テキストを指定できるようにする
+                                self.scatter_objects.index(_scatter_object)
+                            ][index],  # HACK: テキストを指定できるようにする
                         )
                         _imagebox.axes = self.ax
 
@@ -357,17 +381,18 @@ class InteractiveChemicalViewer:
                         self.ax.add_artist(_annotation)
 
                         # アクティブ化
-                        self.annotation_active = _annotation
-                        self.annotation_active.patch.set_linewidth(
+                        self._annotation_active = _annotation
+                        self._annotation_active.patch.set_linewidth(
                             self.LINEWIDTH_ACTIVE
                         )
                         # 移動可能にするために保存
-                        self.annotation_dragging = _annotation
-                        self.lst_annotations_visible.append(_annotation)
+                        self._annotation_dragging = _annotation
+                        self._annotations_visible += (_annotation,)
+                        break
                 # 点とannotationのいずれにもマウスが乗っていない場合
                 else:
                     # アクティブなannotationがあるならば非アクティブ化する
-                    self.annotation_active = None
+                    self._annotation_active = None
             self.fig.canvas.draw_idle()
 
     def _on_motion(self, event: matplotlib.backend_bases.MouseEvent) -> None:
@@ -379,10 +404,10 @@ class InteractiveChemicalViewer:
             event
         """
         if (
-            type(self.annotation_dragging)
+            type(self._annotation_dragging)
             is matplotlib.offsetbox.AnnotationBbox
         ):
-            self.annotation_dragging.xybox = (
+            self._annotation_dragging.xybox = (
                 event.xdata,
                 event.ydata,
             )
@@ -390,7 +415,7 @@ class InteractiveChemicalViewer:
             self.ax.figure.canvas.draw_idle()
 
     def _on_release(self, event: matplotlib.backend_bases.MouseEvent) -> None:
-        self.annotation_dragging = None
+        self._annotation_dragging = None
 
     def _resize_annotation(
         self, event: matplotlib.backend_bases.KeyEvent
@@ -411,11 +436,11 @@ class InteractiveChemicalViewer:
         """
         if event.inaxes == self.ax:
             if (
-                type(self.annotation_active)
+                type(self._annotation_active)
                 is matplotlib.offsetbox.AnnotationBbox
             ):
                 offset_image: OffsetImageWithAnnotation = (
-                    self.annotation_active.offsetbox
+                    self._annotation_active.offsetbox
                 )
                 # *キー/-キーでoffsetboxを拡大縮小できる
                 if event.key == "+":
@@ -424,8 +449,8 @@ class InteractiveChemicalViewer:
                     offset_image.set_zoom(offset_image.get_zoom() / 1.1)
                 # 再描画
                 self.fig.canvas.draw_idle()
-            elif self.annotation_active is None:
-                for _annotation in self.lst_annotations_visible:
+            elif self._annotation_active is None:
+                for _annotation in self._annotations_visible:
                     offset_image: matplotlib.offsetbox.OffsetImage = (
                         _annotation.offsetbox
                     )
@@ -456,18 +481,18 @@ class InteractiveChemicalViewer:
         """
         if event.inaxes == self.ax:
             if (
-                type(self.annotation_active)
+                type(self._annotation_active)
                 is matplotlib.offsetbox.AnnotationBbox
             ):
                 if event.key in {"backspace", "delete"}:
-                    self.lst_annotations_visible.remove(self.annotation_active)
-                    self.annotation_active.remove()
-                    self.annotation_active = None
-                    self.annotation_dragging = None
-            elif self.annotation_active is None:
-                for _annotation in copy(self.lst_annotations_visible):
+                    self._annotations_visible.remove(self._annotation_active)
+                    self._annotation_active.remove()
+                    self._annotation_active = None
+                    self._annotation_dragging = None
+            elif self._annotation_active is None:
+                for _annotation in copy(self._annotations_visible):
                     if event.key in {"backspace", "delete"}:
-                        self.lst_annotations_visible.remove(_annotation)
+                        self._annotations_visible.remove(_annotation)
                         _annotation.remove()
                         _annotation = None
             else:

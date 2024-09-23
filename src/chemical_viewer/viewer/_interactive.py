@@ -158,13 +158,13 @@ class InteractiveChemicalViewer:
         self.ax.add_artist(self.annotation_hover)
 
         # 登録
-        self.fig.canvas.mpl_connect("motion_notify_event", self.hover)
-        self.fig.canvas.mpl_connect("button_press_event", self.on_click)
-        self.fig.canvas.mpl_connect("button_release_event", self.on_release)
-        self.fig.canvas.mpl_connect("motion_notify_event", self.on_motion)
+        self.fig.canvas.mpl_connect("motion_notify_event", self._hover)
+        self.fig.canvas.mpl_connect("button_press_event", self._on_click)
+        self.fig.canvas.mpl_connect("button_release_event", self._on_release)
+        self.fig.canvas.mpl_connect("motion_notify_event", self._on_motion)
 
-        self.fig.canvas.mpl_connect("key_press_event", self.resize_annotation)
-        self.fig.canvas.mpl_connect("key_press_event", self.delete)
+        self.fig.canvas.mpl_connect("key_press_event", self._resize_annotation)
+        self.fig.canvas.mpl_connect("key_press_event", self._delete)
 
         self.fig.tight_layout()
         self.fig.canvas.draw_idle()
@@ -190,7 +190,7 @@ class InteractiveChemicalViewer:
         self.scatter_object = self.ax.scatter(x, y, **kwargs)
         return self.scatter_object
 
-    def hover(
+    def _hover(
         self,
         event: matplotlib.backend_bases.MouseEvent,
     ) -> None:
@@ -249,7 +249,7 @@ class InteractiveChemicalViewer:
                     # 再描画
                     self.fig.canvas.draw_idle()
 
-    def on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
+    def _on_click(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         """クリック時の挙動。
 
         Parameters
@@ -348,7 +348,7 @@ class InteractiveChemicalViewer:
                     self.annotation_active = None
             self.fig.canvas.draw_idle()
 
-    def on_motion(self, event: matplotlib.backend_bases.MouseEvent) -> None:
+    def _on_motion(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         """マウスの動きに従ってAnnotationBboxを移動させる。
 
         Parameters
@@ -367,10 +367,10 @@ class InteractiveChemicalViewer:
             # 再描画
             self.ax.figure.canvas.draw_idle()
 
-    def on_release(self, event: matplotlib.backend_bases.MouseEvent) -> None:
+    def _on_release(self, event: matplotlib.backend_bases.MouseEvent) -> None:
         self.annotation_dragging = None
 
-    def resize_annotation(
+    def _resize_annotation(
         self, event: matplotlib.backend_bases.KeyEvent
     ) -> None:
         """+で拡大。-で縮小。
@@ -416,7 +416,7 @@ class InteractiveChemicalViewer:
             # 再描画
             self.fig.canvas.draw_idle()
 
-    def delete(self, event: matplotlib.backend_bases.KeyEvent) -> None:
+    def _delete(self, event: matplotlib.backend_bases.KeyEvent) -> None:
         """backspace/deleteで削除。
 
         もし'active'なannotationがあれば、それだけを削除する。

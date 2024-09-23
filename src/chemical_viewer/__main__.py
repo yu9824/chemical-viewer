@@ -1,5 +1,6 @@
 import argparse
 import sys
+from pathlib import Path
 from typing import Optional
 
 if sys.version_info >= (3, 9):
@@ -13,7 +14,6 @@ from .gui import main_tk
 __all__ = ("main",)
 
 
-# HACK: argumentに--fileを加える。テンプレートのCSVを用意してそれを読み込む方式。
 def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
     parser = argparse.ArgumentParser(prog=prog, description="")
     parser.add_argument(
@@ -26,6 +26,7 @@ def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
     parser.add_argument(
         "file",
         nargs="?",
+        type=Path,
         default=None,
         help="file path. columns must have 'x', 'y', 'smiles'. ('z', 'texts' are optional)",
     )

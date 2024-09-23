@@ -126,6 +126,7 @@ class InteractiveChemicalViewer:
         self.annotation_dragging: Optional[
             matplotlib.offsetbox.AnnotationBbox
         ] = None
+        self.scatter_objects: list[matplotlib.collections.PathCollection] = []
 
         self.zorder_max = 3
 
@@ -187,8 +188,9 @@ class InteractiveChemicalViewer:
             len(self.mols) == len(x) == len(y) == len(texts)
         ), "lengths of mols, x, and y must be the same"
         self.texts = texts
-        self.scatter_object = self.ax.scatter(x, y, **kwargs)
-        return self.scatter_object
+        _scatter_object = self.ax.scatter(x, y, **kwargs)
+        self.scatter_objects.append(_scatter_object)
+        return _scatter_object
 
     def _hover(
         self,
@@ -198,48 +200,57 @@ class InteractiveChemicalViewer:
         # マウスが乗っているのが当該axならば
         # かつ、annotationのどれにもマウスが乗っていないならば
         if event.inaxes == self.ax:
-            # scatter_objectのcontainsメソッドで、マウスが乗っているかどうかを判定
-            contains, details = self.scatter_object.contains(event)
-            # マウスが乗っている場合
-            if (
-                contains
-                and self.annotation_active is None
-                and not any(
-                    _annotation.contains(event)[0]
-                    for _annotation in self.lst_annotations_visible
-                )
+            # zorderが大きい順に並び替えて、同じ場合は後からscatterされたもの
+            for _scatter_object in sorted(
+                self.scatter_objects,
+                key=lambda _scatter_object: (
+                    getattr(_scatter_object, "zorder"),
+                    self.scatter_objects.index(_scatter_object),
+                ),
+                reverse=True,
             ):
-                details: dict[
-                    Literal["ind"], np.ndarray[Any, np.dtype[np.int32]]
-                ]
-                # annotationを更新する作業
-                # details["ind"]でマウスが乗っているscatterのindexが取得できる
-                # scatterのindexが1次元のnp.ndarrayで返ってくる。（複数が重なっていることもあるため）
-                _index_scatter: int = details["ind"][0]
+                # scatter_objectのcontainsメソッドで、マウスが乗っているかどうかを判定
+                contains, details = _scatter_object.contains(event)
+                # マウスが乗っている場合
+                if (
+                    contains
+                    and self.annotation_active is None
+                    and not any(
+                        _annotation.contains(event)[0]
+                        for _annotation in self.lst_annotations_visible
+                    )
+                ):
+                    details: dict[
+                        Literal["ind"], np.ndarray[Any, np.dtype[np.int32]]
+                    ]
+                    # annotationを更新する作業
+                    # details["ind"]でマウスが乗っているscatterのindexが取得できる
+                    # scatterのindexが1次元のnp.ndarrayで返ってくる。（複数が重なっていることもあるため）
+                    _index_scatter: int = details["ind"][0]
 
-                # 当該点の座標を取得して、位置を更新
-                self.annotation_hover.xy = self.scatter_object.get_offsets()[
-                    _index_scatter
-                ]
-                self.annotation_hover.xybox = get_xybox(
-                    self.annotation_hover.xy, ax=self.ax, alpha=0.25
-                )
+                    # 当該点の座標を取得して、位置を更新
+                    self.annotation_hover.xy = _scatter_object.get_offsets()[
+                        _index_scatter
+                    ]
+                    self.annotation_hover.xybox = get_xybox(
+                        self.annotation_hover.xy, ax=self.ax, alpha=0.25
+                    )
 
-                # 画像を更新
-                self.imagebox_hover.set_data(
-                    Draw.MolToImage(self.mols[_index_scatter])
-                )
-                # HACK: テキストを指定できるようにする
-                self.imagebox_hover.set_text(self.texts[_index_scatter])
+                    # 画像を更新
+                    self.imagebox_hover.set_data(
+                        Draw.MolToImage(self.mols[_index_scatter])
+                    )
+                    # HACK: テキストを指定できるようにする
+                    self.imagebox_hover.set_text(self.texts[_index_scatter])
 
-                # 見えるようにして
-                self.annotation_hover.set_visible(True)
-                # 一番手前にして
-                if self.annotation_hover.zorder < self.zorder_max:
-                    self.zorder_max += 1
-                    self.annotation_hover.set(zorder=self.zorder_max)
-                # 再描画
-                self.fig.canvas.draw_idle()
+                    # 見えるようにして
+                    self.annotation_hover.set_visible(True)
+                    # 一番手前にして
+                    if self.annotation_hover.zorder < self.zorder_max:
+                        self.zorder_max += 1
+                        self.annotation_hover.set(zorder=self.zorder_max)
+                    # 再描画
+                    self.fig.canvas.draw_idle()
             # マウスが乗っていない場合
             else:
                 # 今annotationが見えているならば
@@ -302,46 +313,57 @@ class InteractiveChemicalViewer:
                         self.LINEWIDTH_INACTIVE
                     )
 
-                # scatter_objectにマウスが乗っているかどうかを判定
-                contains, details = self.scatter_object.contains(event)
-                # マウスが乗っている場合
-                if contains and self.annotation_active is None:
-                    index: int = details["ind"][0]
+                # zorderが大きい順に並び替えて、同じ場合は後からscatterされたもの
+                for _scatter_object in sorted(
+                    self.scatter_objects,
+                    key=lambda _scatter_object: (
+                        getattr(_scatter_object, "zorder"),
+                        self.scatter_objects.index(_scatter_object),
+                    ),
+                    reverse=True,
+                ):
+                    # scatter_objectにマウスが乗っているかどうかを判定
+                    contains, details = _scatter_object.contains(event)
+                    # マウスが乗っている場合
+                    if contains and self.annotation_active is None:
+                        index: int = details["ind"][0]
 
-                    _imagebox = OffsetImageWithAnnotation(
-                        Draw.MolToImage(self.mols[index]),
-                        zoom=self.scale,
-                        text=self.texts[
-                            index
-                        ],  # HACK: テキストを指定できるようにする
-                    )
-                    _imagebox.axes = self.ax
+                        _imagebox = OffsetImageWithAnnotation(
+                            Draw.MolToImage(self.mols[index]),
+                            zoom=self.scale,
+                            text=self.texts[
+                                index
+                            ],  # HACK: テキストを指定できるようにする
+                        )
+                        _imagebox.axes = self.ax
 
-                    # annotationを作成
-                    self.zorder_max += 1
-                    xy = self.scatter_object.get_offsets()[index]
-                    _annotation = matplotlib.offsetbox.AnnotationBbox(
-                        _imagebox,
-                        xy=xy,
-                        xybox=get_xybox(xy, ax=self.ax, alpha=0.25),
-                        xycoords="data",
-                        boxcoords="data",
-                        # boxcoords="offset points",
-                        pad=0.5,
-                        arrowprops=dict(arrowstyle="->", facecolor="black"),
-                        zorder=self.zorder_max,
-                    )
-                    _annotation.set_visible(True)
-                    self.ax.add_artist(_annotation)
+                        # annotationを作成
+                        self.zorder_max += 1
+                        xy = _scatter_object.get_offsets()[index]
+                        _annotation = matplotlib.offsetbox.AnnotationBbox(
+                            _imagebox,
+                            xy=xy,
+                            xybox=get_xybox(xy, ax=self.ax, alpha=0.25),
+                            xycoords="data",
+                            boxcoords="data",
+                            # boxcoords="offset points",
+                            pad=0.5,
+                            arrowprops=dict(
+                                arrowstyle="->", facecolor="black"
+                            ),
+                            zorder=self.zorder_max,
+                        )
+                        _annotation.set_visible(True)
+                        self.ax.add_artist(_annotation)
 
-                    # アクティブ化
-                    self.annotation_active = _annotation
-                    self.annotation_active.patch.set_linewidth(
-                        self.LINEWIDTH_ACTIVE
-                    )
-                    # 移動可能にするために保存
-                    self.annotation_dragging = _annotation
-                    self.lst_annotations_visible.append(_annotation)
+                        # アクティブ化
+                        self.annotation_active = _annotation
+                        self.annotation_active.patch.set_linewidth(
+                            self.LINEWIDTH_ACTIVE
+                        )
+                        # 移動可能にするために保存
+                        self.annotation_dragging = _annotation
+                        self.lst_annotations_visible.append(_annotation)
                 # 点とannotationのいずれにもマウスが乗っていない場合
                 else:
                     # アクティブなannotationがあるならば非アクティブ化する

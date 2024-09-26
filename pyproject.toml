@@ -29,9 +29,10 @@ classifiers = [
 [project.optional-dependencies]
 test = ["pytest"]
 dev = ["build"]
+optional = ["openpyxl"]
 jupyter = ["jupyter", "ipympl"]
 docs = ["sphinx", "sphinx_rtd_theme", "sphinx-markdown-tables", "recommonmark"]
-gui = ["TkEasyGUI", "pandas"]
+gui = ["TkEasyGUI >= 0.2.73", "pandas"]
 
 [project.urls]
 Homepage = "https://github.com/yu9824/chemical-viewer"

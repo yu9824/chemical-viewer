@@ -22,10 +22,7 @@ jobs:
         run: python -m pip install .[gui,optional]
 
       - name: build
-        run: >
-          pyinstaller --onefile src/chemical_viewer/__main__.py
-            -n chemical-viewer
-            --collect-all chemical_viewer
+        run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all chemical_viewer
 
       - name: upload
         uses: actions/upload-artifact@v4
@@ -49,10 +46,7 @@ jobs:
         run: python -m pip install .[gui,optional]
 
       - name: build
-        run: >
-          pyinstaller --onefile src/chemical_viewer/__main__.py
-            -n chemical-viewer
-            --collect-all chemical_viewer
+        run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all chemical_viewer
 
       - name: upload
         uses: actions/upload-artifact@v4
@@ -77,10 +71,7 @@ jobs:
         run: python -m pip install .[gui,optional]
 
       - name: build
-        run: >
-          pyinstaller --onefile src/chemical_viewer/__main__.py
-            -n chemical-viewer
-            --collect-all chemical_viewer
+        run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all chemical_viewer
 
       - name: upload
         uses: actions/upload-artifact@v4

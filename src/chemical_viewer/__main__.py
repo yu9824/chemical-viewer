@@ -10,11 +10,12 @@ else:
 
 from chemical_viewer import __version__
 from chemical_viewer.gui import main_tk
-from chemical_viewer.logging import DEBUG, get_root_logger
+from chemical_viewer.logging import DEBUG, get_child_logger, get_root_logger
 
 __all__ = ("main",)
 
 root_logger = get_root_logger()
+_logger = get_child_logger(__name__)
 
 
 def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
@@ -41,7 +42,10 @@ def main(cli_args: Sequence[str], prog: Optional[str] = None) -> None:
     if args.debug:
         root_logger.setLevel(DEBUG)
 
-    main_tk(args.file)
+    try:
+        main_tk(args.file)
+    except Exception:
+        _logger.exception("")
 
 
 def entrypoint() -> None:

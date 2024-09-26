@@ -12,16 +12,9 @@
 [![Conda Platforms](https://img.shields.io/conda/pn/conda-forge/chemical-viewer.svg)](https://anaconda.org/conda-forge/chemical-viewer)
 -->
 
-Before [pep518](https://peps.python.org/pep-0518/)
-- `setup.py`
-- `setup.cfg`
-- `ruff.toml`
-
-After [pep518](https://peps.python.org/pep-0518/)
-- `pyproject.toml`
-
-
 ## How to use
+
+### CLI
 
 After `pip install`
 
@@ -31,3 +24,14 @@ chemical-viewer ./data/data.csv
 ```
 
 Please check help (`chemical-viewer --help`)
+
+### Python API
+
+```python
+from chemical_viewer import InteractiveViewer
+from rdkit import Chem
+
+viewer = InteractiveViewer()
+viewer.scatter([1], [1], mols=[Chem.MolFromSmiles("CC")], texts=["test"])
+
+```

@@ -27,7 +27,7 @@ Python-API
 
 """
 
-__version__ = "0.0.4"
+__version__ = "0.0.5alpha0"
 __license__ = "MIT"
 __author__ = "yu9824"
 __copyright__ = "Copyright © 2024 yu9824"

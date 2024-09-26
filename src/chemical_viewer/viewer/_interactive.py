@@ -23,6 +23,18 @@ else:
 
 
 class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
+    """_summary_
+
+    Parameters
+    ----------
+    arr : ArrayLike
+        image array
+    zoom : float, optional
+        zoom scale, by default 0.3
+    text : Optional[str], optional
+        text, by default None
+    """
+
     def __init__(
         self,
         arr: ArrayLike,
@@ -91,15 +103,31 @@ class OffsetImageWithAnnotation(matplotlib.offsetbox.VPacker):
 def get_xybox(
     xy: tuple[float, float], ax: matplotlib.axes.Axes, alpha: float = 0.25
 ) -> tuple[float, float]:
+    """get xybox coordination from xy coordination
+
+    Parameters
+    ----------
+    xy : tuple[float, float]
+        xy coordination
+    ax : matplotlib.axes.Axes
+        Axes
+    alpha : float, optional
+        scale parameter, by default 0.25
+
+    Returns
+    -------
+    tuple[float, float]
+        xybox coordination
+    """
     assert len(xy) == 2
 
     _tup_lim = (ax.get_xlim(), ax.get_ylim())
     _tup_len = tuple(map(lambda _lim: _lim[1] - _lim[0], _tup_lim))
     _xy_center = tuple(map(lambda _lim: add(*_lim) / 2, _tup_lim))
 
-    signs: list[Literal[1, -1]] = list()
-    for _t, _t_center in zip(xy, _xy_center):
-        signs.append(1 if _t < _t_center else -1)
+    signs: "tuple[Literal[1, -1], Literal[1, -1]]" = tuple(
+        1 if _t < _t_center else -1 for _t, _t_center in zip(xy, _xy_center)
+    )
 
     return tuple(
         xy[_idx] + _tup_len[_idx] * alpha * signs[_idx] for _idx in range(2)
@@ -107,6 +135,17 @@ def get_xybox(
 
 
 class InteractiveChemicalViewer:
+    """InteractiveChemicalViewer
+
+    Parameters
+    ----------
+    ax : Optional[matplotlib.axes.Axes], optional
+        _description_, by default None
+    scale : float, optional
+        _description_, by default 0.3
+
+    """
+
     def __init__(
         self,
         ax: Optional[matplotlib.axes.Axes] = None,
@@ -196,6 +235,24 @@ class InteractiveChemicalViewer:
         texts: Optional[Sequence[str]] = None,
         **kwargs,
     ) -> matplotlib.collections.PathCollection:
+        """wrapper of `plt.scatter`
+
+        Parameters
+        ----------
+        x : ArrayLike
+            x
+        y : ArrayLike
+            y
+        mols : Sequence[Chem.rdchem.Mol]
+            mols
+        texts : Optional[Sequence[str]], optional
+            texts, by default None
+
+        Returns
+        -------
+        matplotlib.collections.PathCollection
+            return of `plt.scatter`
+        """
         self.mols += (tuple(mols),)
 
         if texts is None:

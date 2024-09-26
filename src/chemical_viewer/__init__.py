@@ -8,15 +8,20 @@ Install
 
 How to use
 ----------
+
 CLI
 ^^^
+
 .. code-block:: bash
+
     chemical-viewer # see 'chemical-viewr --help'
 
 
 Python-API
 ^^^^^^^^^^
+
 .. code-block:: python
+
     from chemical_viewer import InteractiveChemicalViewer
     # when jupyter, `%matplotlib widgets` has needed.
 

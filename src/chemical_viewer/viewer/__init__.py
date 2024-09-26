@@ -1,3 +1,3 @@
-from ._interactive import InteractiveChemicalViewer
+from ._core import InteractiveChemicalViewer
 
-__all__ = ["InteractiveChemicalViewer"]
+__all__ = ("InteractiveChemicalViewer",)

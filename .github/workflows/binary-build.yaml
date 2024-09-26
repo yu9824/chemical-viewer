@@ -22,7 +22,7 @@ jobs:
         run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all
 
       - name: upload
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: chemical-viewer-windows
           path: dist/windows/chemical-viewer.exe
@@ -43,7 +43,7 @@ jobs:
         run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all
 
       - name: upload
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: chemical-viewer-macos
           path: dist/macos/chemical-viewer
@@ -65,7 +65,7 @@ jobs:
         run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all
 
       - name: upload
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: chemical-viewer-linux
           path: dist/linux/chemical-viewer

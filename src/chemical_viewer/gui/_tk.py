@@ -93,8 +93,8 @@ def start(df: pd.DataFrame) -> None:
                 values=df.head().values.tolist(),
                 headings=df.columns.tolist(),
                 key="table",
-                max_col_width=1,
                 expand_x=True,
+                vertical_scroll_only=False,
             ),
         ),
         (

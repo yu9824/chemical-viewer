@@ -18,6 +18,9 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip PyInstaller
 
+      - name: Install chemical-viewer
+        run: python -m pip install .[gui,optional]
+
       - name: build
         run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all chemical-viewer
 
@@ -25,7 +28,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chemical-viewer-windows
-          path: dist/windows/chemical-viewer.exe
+          path: dist/chemical-viewer.exe
 
   macOS-build:
     runs-on: macOS-latest
@@ -39,6 +42,9 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip PyInstaller
 
+      - name: Install chemical-viewer
+        run: python -m pip install .[gui,optional]
+
       - name: build
         run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all chemical-viewer
 
@@ -46,7 +52,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chemical-viewer-macos
-          path: dist/macos/chemical-viewer
+          path: dist/chemical-viewer
 
   ubuntu-build:
     runs-on: ubuntu-latest
@@ -61,6 +67,9 @@ jobs:
       - name: Upgrade pip
         run: python -m pip install --upgrade pip PyInstaller
 
+      - name: Install chemical-viewer
+        run: python -m pip install .[gui,optional]
+
       - name: build
         run: pyinstaller --onefile src/chemical_viewer/__main__.py -n chemical-viewer --collect-all chemical-viewer
 
@@ -68,7 +77,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: chemical-viewer-linux
-          path: dist/linux/chemical-viewer
+          path: dist/chemical-viewer
 
   release:
     needs: [ubuntu-build, macOS-build, windows-build]

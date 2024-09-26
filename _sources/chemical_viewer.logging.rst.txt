@@ -1,0 +1,7 @@
+chemical\_viewer.logging package
+================================
+
+.. automodule:: chemical_viewer.logging
+   :members:
+   :undoc-members:
+   :show-inheritance:

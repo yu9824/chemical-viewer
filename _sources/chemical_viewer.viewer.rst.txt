@@ -1,0 +1,15 @@
+chemical\_viewer.viewer package
+===============================
+
+.. automodule:: chemical_viewer.viewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   chemical_viewer.viewer.utils

@@ -1,0 +1,18 @@
+chemical\_viewer package
+========================
+
+.. automodule:: chemical_viewer
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   chemical_viewer.gui
+   chemical_viewer.logging
+   chemical_viewer.utils
+   chemical_viewer.viewer

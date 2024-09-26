@@ -1,0 +1,7 @@
+chemical\_viewer.utils package
+==============================
+
+.. automodule:: chemical_viewer.utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
